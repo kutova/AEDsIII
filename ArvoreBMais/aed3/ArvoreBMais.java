@@ -70,7 +70,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             // último filho -> 8 bytes
             // ponteiro próximo -> 8 bytes
             this.TAMANHO_ELEMENTO = this.construtor.newInstance().size();
-            this.TAMANHO_PAGINA = 4 + maxElementos * this.TAMANHO_ELEMENTO + this.maxFilhos * 8 + 16;
+            this.TAMANHO_PAGINA = 4 + this.maxElementos * this.TAMANHO_ELEMENTO + this.maxFilhos * 8 + 8;
         }
 
         // Retorna o vetor de bytes que representa a página para armazenamento em
@@ -154,8 +154,10 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
         // Abre (ou cria) o arquivo, escrevendo uma raiz empty, se necessário.
         arquivo = new RandomAccessFile(nomeArquivo, "rw");
-        if (arquivo.length() < 8)
+        if (arquivo.length() < 16) {
             arquivo.writeLong(-1); // raiz empty
+            arquivo.writeLong(-1); // pointeiro lista excluídos
+        }
     }
 
     // Testa se a árvore está empty. Uma árvore empty é identificada pela raiz == -1
@@ -332,9 +334,21 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             novaPagina.filhos.add(pagina);
             novaPagina.filhos.add(paginaAux);
 
-            // Acha o espaço em disco. Nesta versão, todas as novas páginas
-            // são escrita no fim do arquivo.
-            arquivo.seek(arquivo.length());
+            // Acha o espaço em disco. Testa se há páginas excluídas.
+            arquivo.seek(8);
+            long end = arquivo.readLong();
+            if(end==-1) {
+                end = arquivo.length();
+            } else { // reusa um endereço e atualiza a lista de excluídos no cabeçalho
+                arquivo.seek(end);
+                Pagina pa_excluida = new Pagina(construtor, ordem);
+                byte[] buffer = new byte[pa_excluida.TAMANHO_PAGINA];
+                arquivo.read(buffer);
+                pa_excluida.fromByteArray(buffer);
+                arquivo.seek(8);
+                arquivo.writeLong(pa_excluida.proxima);
+            }
+            arquivo.seek(end);
             long raiz = arquivo.getFilePointer();
             arquivo.write(novaPagina.toByteArray());
             arquivo.seek(0);
@@ -469,15 +483,30 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
         }
 
+        // Obtém um endereço para a nova página (página excluída ou fim do arquivo)
+        arquivo.seek(8);
+        long end = arquivo.readLong();
+        if(end==-1) {
+            end = arquivo.length();
+        } else { // reusa um endereço e atualiza a lista de excluídos no cabeçalho
+            arquivo.seek(end);
+            Pagina pa_excluida = new Pagina(construtor, ordem);
+            buffer = new byte[pa_excluida.TAMANHO_PAGINA];
+            arquivo.read(buffer);
+            pa_excluida.fromByteArray(buffer);
+            arquivo.seek(8);
+            arquivo.writeLong(pa_excluida.proxima);
+        }
+
         // Se a página era uma folha e apontava para outra folha,
         // então atualiza os ponteiros dessa página e da página nova
         if (pa.filhos.get(0) == -1) {
             np.proxima = pa.proxima;
-            pa.proxima = arquivo.length();
+            pa.proxima = end;
         }
 
-        // Grava as páginas no arquivos arquivo
-        paginaAux = arquivo.length();
+        // Grava as páginas no arquivo
+        paginaAux = end;
         arquivo.seek(paginaAux);
         arquivo.write(np.toByteArray());
 
@@ -517,10 +546,19 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             pa.fromByteArray(buffer);
 
             // Se a página tiver 0 elementos, apenas atualiza o ponteiro para a raiz,
-            // no cabeçalho do arquivo, para o seu primeiro filho.
+            // no cabeçalho do arquivo, para o seu primeiro filho e insere a raiz velha
+            // na lista de páginas excluídas
             if (pa.elementos.size() == 0) {
                 arquivo.seek(0);
                 arquivo.writeLong(pa.filhos.get(0));
+
+                arquivo.seek(8);
+                long end = arquivo.readLong();  // cabeça da lista de páginas excluídas
+                pa.proxima = end;
+                arquivo.seek(8);
+                arquivo.writeLong(pagina);
+                arquivo.seek(pagina);
+                arquivo.write(pa.toByteArray());
             }
         }
 
@@ -684,13 +722,19 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 // Copia todos os registros para o irmão da esquerda
                 pIrmaoEsq.elementos.addAll(pFilho.elementos);
                 pIrmaoEsq.filhos.addAll(pFilho.filhos);
-                pFilho.elementos.clear(); // aqui o endereço do filho poderia ser incluido em uma lista encadeada no
-                                          // cabeçalho, indicando os espaços reaproveitáveis
+                pFilho.elementos.clear(); 
                 pFilho.filhos.clear();
 
                 // Se as páginas forem folhas, copia o ponteiro para a folha seguinte
                 if (pIrmaoEsq.filhos.get(0) == -1)
                     pIrmaoEsq.proxima = pFilho.proxima;
+
+                // Insere o filho na lista de páginas excluídas
+                arquivo.seek(8);
+                pFilho.proxima = arquivo.readLong();
+                arquivo.seek(8);
+                arquivo.writeLong(paginaFilho);
+
             }
 
             // Senão, faz a fusão com o irmão direito, assumindo que ele existe
@@ -711,13 +755,18 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 // Move todos os registros do irmão da direita
                 pFilho.elementos.addAll(pIrmaoDir.elementos);
                 pFilho.filhos.addAll(pIrmaoDir.filhos);
-                pIrmaoDir.elementos.clear(); // aqui o endereço do irmão poderia ser incluido em uma lista encadeada
-                                             // no
-                                             // cabeçalho, indicando os espaços reaproveitáveis
+                pIrmaoDir.elementos.clear(); 
                 pIrmaoDir.filhos.clear();
 
                 // Se a página for folha, copia o ponteiro para a próxima página
                 pFilho.proxima = pIrmaoDir.proxima;
+
+                // Insere o irmão da direita na lista de páginas excluídas
+                arquivo.seek(8);
+                pIrmaoDir.proxima = arquivo.readLong();
+                arquivo.seek(8);
+                arquivo.writeLong(paginaIrmaoDir);
+
             }
 
             // testa se o pai também ficou sem o número mínimo de elementos
