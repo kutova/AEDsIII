@@ -1,0 +1,9 @@
+#resultado {
+  border: thin solid #dce5e8;
+  flex: 1;
+  min-height: 4em;
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  font-family: "Inconsolata", "Consolas", "Courier New", monospace;
+  font-size: larger;
+}
