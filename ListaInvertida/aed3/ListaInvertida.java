@@ -1,13 +1,13 @@
 /*********
  * LISTA INVERTIDA
- * String chave, int dado
+ * String termo, int dado
  * 
  * Os nomes dos métodos foram mantidos em inglês
  * apenas para manter a coerência com o resto da
  * disciplina:
- * - boolean create(String chave, int dado)
- * - int[] read(int chave)
- * - boolean delete(String chave, int dado)
+ * - boolean create(String termo, int dado)
+ * - int[] read(int termo)
+ * - boolean delete(String termo, int dado)
  * 
  * Implementado pelo Prof. Marcos Kutova
  * v1.0 - 2020
@@ -35,7 +35,7 @@ public class ListaInvertida {
     short quantidade; // quantidade de dados presentes na lista
     short quantidadeMaxima; // quantidade máxima de dados que a lista pode conter
     ElementoLista[] elementos; // sequência de dados armazenados no bloco
-    long proximo; // ponteiro para o bloco sequinte da mesma chave
+    long proximo; // ponteiro para o bloco sequinte do mesmo termo
     short bytesPorBloco; // size fixo do cesto em bytes
 
     public Bloco(int qtdmax) throws Exception {
@@ -92,7 +92,7 @@ public class ListaInvertida {
       return true;
     }
 
-    // Lê um valor no bloco
+    // Testa se um valor existe no bloco
     public boolean test(int id) {
       if (empty())
         return false;
@@ -102,6 +102,33 @@ public class ListaInvertida {
       if (i < quantidade && id == elementos[i].getId())
         return true;
       else
+        return false;
+    }
+
+    // Lê um valor existente no bloco
+    public ElementoLista read(int id) {
+      if (empty())
+        return null;
+      int i = 0;
+      while (i < quantidade && id > elementos[i].getId())
+        i++;
+      if (i < quantidade && id == elementos[i].getId())
+        return elementos[i].clone();
+      else
+        return null;
+    }
+
+    // Remove um valor do bloco
+    public boolean update(ElementoLista e) {
+      if (empty())
+        return false;
+      int i = 0;
+      while (i < quantidade && e.getId() > elementos[i].getId())
+        i++;
+      if (e.getId() == elementos[i].getId()) {
+        elementos[i] = e.clone();
+        return true;
+      } else
         return false;
     }
 
@@ -205,40 +232,40 @@ public class ListaInvertida {
     return arqDicionario.readInt();
   }
 
-  // Insere um dado na lista da chave de forma NÃO ORDENADA
+  // Insere um dado na lista do termo de forma NÃO ORDENADA
   public boolean create(String c, ElementoLista e) throws Exception {
 
     // Percorre toda a lista testando se já não existe
-    // o dado associado a essa chave
+    // o dado associado a esse termo
     ElementoLista[] lista = read(c);
     for (int i = 0; i < lista.length; i++)
       if (lista[i].getId() == e.getId())
         return false;
 
-    String chave = "";
+    String termo = "";
     long endereco = -1;
-    boolean jaExiste = false;
 
-    // localiza a chave no dicionário
+    // localiza o termo no dicionário
+    boolean existe = false;
     arqDicionario.seek(4);
     while (arqDicionario.getFilePointer() != arqDicionario.length()) {
-      chave = arqDicionario.readUTF();
+      termo = arqDicionario.readUTF();
       endereco = arqDicionario.readLong();
-      if (chave.compareTo(c) == 0) {
-        jaExiste = true;
+      if (termo.compareTo(c) == 0) {
+        existe = true;
         break;
       }
     }
 
-    // Se não encontrou, cria um novo bloco para essa chave
-    if (!jaExiste) {
+    // Se não encontrou, cria um novo bloco para esse termo
+    if (!existe) {
       // Cria um novo bloco
       Bloco b = new Bloco(quantidadeDadosPorBloco);
       endereco = arqBlocos.length();
       arqBlocos.seek(endereco);
       arqBlocos.write(b.toByteArray());
 
-      // Insere a nova chave no dicionário
+      // Insere o novo termo no dicionário
       arqDicionario.seek(arqDicionario.length());
       arqDicionario.writeUTF(c);
       arqDicionario.writeLong(endereco);
@@ -282,26 +309,26 @@ public class ListaInvertida {
     return true;
   }
 
-  // Retorna a lista de dados de uma determinada chave
+  // Retorna a lista de entidades completa de um determinado termo
   public ElementoLista[] read(String c) throws Exception {
 
     ArrayList<ElementoLista> lista = new ArrayList<>();
 
-    String chave = "";
+    String termo = "";
     long endereco = -1;
-    boolean jaExiste = false;
 
-    // localiza a chave no dicionário
+    // localiza o termo no dicionário
+    boolean existe = false;
     arqDicionario.seek(4);
     while (arqDicionario.getFilePointer() != arqDicionario.length()) {
-      chave = arqDicionario.readUTF();
+      termo = arqDicionario.readUTF();
       endereco = arqDicionario.readLong();
-      if (chave.compareTo(c) == 0) {
-        jaExiste = true;
+      if (termo.compareTo(c) == 0) {
+        existe = true;
         break;
       }
     }
-    if (!jaExiste)
+    if (!existe)
       return new ElementoLista[0];
 
     // Cria um laço para percorrer todos os blocos encadeados nesse endereço
@@ -333,24 +360,114 @@ public class ListaInvertida {
     return resposta;
   }
 
-  // Remove o dado de uma chave (mas não apaga a chave nem apaga blocos)
-  public boolean delete(String c, int id) throws Exception {
+  // Retorna a frequência de um determinado termo em um determinado documento
+  public ElementoLista read(String c, int id) throws Exception {
 
-    String chave = "";
+    String termo = "";
     long endereco = -1;
-    boolean jaExiste = false;
 
-    // localiza a chave no dicionário
+    // localiza o termo no dicionário
+    boolean existe = false;
     arqDicionario.seek(4);
     while (arqDicionario.getFilePointer() != arqDicionario.length()) {
-      chave = arqDicionario.readUTF();
+      termo = arqDicionario.readUTF();
       endereco = arqDicionario.readLong();
-      if (chave.compareTo(c) == 0) {
-        jaExiste = true;
+      if (termo.compareTo(c) == 0) {
+        existe = true;
         break;
       }
     }
-    if (!jaExiste)
+    if (!existe)
+      return null;
+
+    // Cria um laço para percorrer todos os blocos encadeados nesse endereço
+    Bloco b = new Bloco(quantidadeDadosPorBloco);
+    byte[] bd;
+    while (endereco != -1) {
+
+      // Carrega o bloco
+      arqBlocos.seek(endereco);
+      bd = new byte[b.size()];
+      arqBlocos.read(bd);
+      b.fromByteArray(bd);
+
+      // Testa se o valor está neste bloco e sai do laço
+      if (b.test(id)) 
+        return b.read(id);
+
+      // Avança para o próximo bloco
+      endereco = b.next();
+    }
+
+    return null;
+  }
+
+  // Atualiza o dado de um termo, se ele existir
+  public boolean update(String c, ElementoLista e) throws Exception {
+
+    String termo = "";
+    long endereco = -1;
+
+    // localiza o termo no dicionário
+    boolean existe = false;
+    arqDicionario.seek(4);
+    while (arqDicionario.getFilePointer() != arqDicionario.length()) {
+      termo = arqDicionario.readUTF();
+      endereco = arqDicionario.readLong();
+      if (termo.compareTo(c) == 0) {
+        existe = true;
+        break;
+      }
+    }
+    if (!existe)
+      return false;
+
+    // Cria um laço para percorrer todos os blocos encadeados nesse endereço
+    Bloco b = new Bloco(quantidadeDadosPorBloco);
+    byte[] bd;
+    while (endereco != -1) {
+
+      // Carrega o bloco
+      arqBlocos.seek(endereco);
+      bd = new byte[b.size()];
+      arqBlocos.read(bd);
+      b.fromByteArray(bd);
+
+      // Testa se o valor está neste bloco e sai do laço
+      if (b.test(e.getId())) {
+        b.update(e);
+        arqBlocos.seek(endereco);
+        arqBlocos.write(b.toByteArray());
+        return true;
+      }
+
+      // Avança para o próximo bloco
+      endereco = b.next();
+    }
+
+    // termo não encontrado
+    return false;
+
+  }
+
+  // Remove o dado de um termo (mas não apaga o termo nem apaga blocos)
+  public boolean delete(String c, int id) throws Exception {
+
+    String termo = "";
+    long endereco = -1;
+
+    // localiza o termo no dicionário
+    boolean existe = false;
+    arqDicionario.seek(4);
+    while (arqDicionario.getFilePointer() != arqDicionario.length()) {
+      termo = arqDicionario.readUTF();
+      endereco = arqDicionario.readLong();
+      if (termo.compareTo(c) == 0) {
+        existe = true;
+        break;
+      }
+    }
+    if (!existe)
       return false;
 
     // Cria um laço para percorrer todos os blocos encadeados nesse endereço
@@ -376,7 +493,7 @@ public class ListaInvertida {
       endereco = b.next();
     }
 
-    // chave não encontrada
+    // termo não encontrado
     return false;
 
   }
@@ -385,14 +502,14 @@ public class ListaInvertida {
 
     System.out.println("\nLISTAS INVERTIDAS:");
 
-    // Percorre todas as chaves
+    // Percorre todos os termos
     arqDicionario.seek(4);
     while (arqDicionario.getFilePointer() != arqDicionario.length()) {
 
-      String chave = arqDicionario.readUTF();
+      String termo = arqDicionario.readUTF();
       long endereco = arqDicionario.readLong();
 
-      // Percorre a lista desta chave
+      // Percorre a lista deste termo
       ArrayList<ElementoLista> lista = new ArrayList<>();
       Bloco b = new Bloco(quantidadeDadosPorBloco);
       byte[] bd;
@@ -413,8 +530,8 @@ public class ListaInvertida {
         endereco = b.next();
       }
 
-      // Imprime a chave e sua lista
-      System.out.print(chave + ": ");
+      // Imprime o termo e sua lista
+      System.out.print(termo + ": ");
       lista.sort(null);
       for (int j = 0; j < lista.size(); j++)
         System.out.print(lista.get(j) + " ");
