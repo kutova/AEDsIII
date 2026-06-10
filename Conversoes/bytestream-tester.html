@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ByteStream.js — Testador Interativo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="bytestream-tester.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="brand-icon">⬡</span>
+        <span class="brand-name">ByteStream<span class="brand-ext">.js</span></span>
+      </div>
+      <span class="header-sub">Testador Interativo · AED3 · PUC Minas</span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── Painel WRITE ── -->
+    <section class="panel" id="panel-write">
+      <div class="panel-header">
+        <span class="panel-label">WRITE</span>
+        <span class="panel-desc">valor → sequência de bytes</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="form-row">
+          <label class="form-label" for="write-type">Tipo</label>
+          <div class="select-wrapper">
+            <select id="write-type">
+              <option value="byte">byte  · 1 byte</option>
+              <option value="short">short  · 2 bytes</option>
+              <option value="int" selected>int  · 4 bytes</option>
+              <option value="long">long  · 8 bytes</option>
+              <option value="boolean">boolean  · 1 byte</option>
+              <option value="char">char  · 2 bytes (UTF-16BE)</option>
+              <option value="float">float  · 4 bytes</option>
+              <option value="double">double  · 8 bytes</option>
+              <option value="string">string  · N bytes (UTF-8)</option>
+              <option value="date">date  · 4 bytes (epoch day)</option>
+              <option value="datetime">dateTime  · 8 bytes (epoch ms)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" id="write-input-row">
+          <label class="form-label" id="write-input-label" for="write-input">Valor</label>
+          <input class="mono-input" id="write-input" type="text"
+                 placeholder="Digite um inteiro" autocomplete="off" spellcheck="false">
+        </div>
+
+        <!-- Boolean especial -->
+        <div class="form-row hidden" id="write-bool-row">
+          <label class="form-label">Valor</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="bool-true">true</button>
+            <button class="toggle-btn" id="bool-false">false</button>
+          </div>
+        </div>
+
+        <button class="action-btn" id="write-btn">
+          <span class="btn-icon">▶</span> Converter
+        </button>
+      </div>
+
+      <!-- Resultado WRITE -->
+      <div class="result-area" id="write-result" aria-live="polite">
+        <div class="result-empty">
+          <span class="result-empty-icon">⬡</span>
+          <span>Aguardando conversão…</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Separador ── -->
+    <div class="divider-label">
+      <span>↕</span>
+    </div>
+
+    <!-- ── Painel READ ── -->
+    <section class="panel" id="panel-read">
+      <div class="panel-header">
+        <span class="panel-label">READ</span>
+        <span class="panel-desc">sequência de bytes → valor</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="form-row">
+          <label class="form-label" for="read-type">Tipo</label>
+          <div class="select-wrapper">
+            <select id="read-type">
+              <option value="byte">byte</option>
+              <option value="short">short</option>
+              <option value="int" selected>int</option>
+              <option value="long">long</option>
+              <option value="boolean">boolean</option>
+              <option value="char">char</option>
+              <option value="float">float</option>
+              <option value="double">double</option>
+              <option value="string">string</option>
+              <option value="date">date</option>
+              <option value="datetime">dateTime</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="read-input">Bytes (hex)</label>
+          <input class="mono-input" id="read-input" type="text"
+                 placeholder="ex: 00 00 00 2A" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="form-row">
+          <label class="form-label" for="read-offset">Offset</label>
+          <input class="mono-input offset-input" id="read-offset" type="number"
+                 value="0" min="0">
+        </div>
+
+        <button class="action-btn" id="read-btn">
+          <span class="btn-icon">▶</span> Decodificar
+        </button>
+      </div>
+
+      <!-- Resultado READ -->
+      <div class="result-area" id="read-result" aria-live="polite">
+        <div class="result-empty">
+          <span class="result-empty-icon">⬡</span>
+          <span>Aguardando decodificação…</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>ByteStream.js · Recurso didático AED3 · Prof. Marcos André S. Kutova</span>
+  </footer>
+
+  <script src="ByteStream.js"></script>
+  <script src="bytestream-tester.js"></script>
+</body>
+</html>
