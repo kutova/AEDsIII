@@ -1,14 +1,15 @@
 # TABELA HASH EXTENSÍVEL
 
+_Implementado pelo Prof. Marcos Kutova_
+
+_v1.1 - 2026_
+
 Os nomes dos métodos foram mantidos em inglês apenas para manter a coerência com o resto da disciplina:
 
 - boolean create(T elemento)
 - T read(int hashcode)
 - boolean update(T novoElemento) // a chave (hashcode) deve ser a mesma
 - boolean delete(int hashcode)
-
-Implementado pelo Prof. Marcos Kutova
-v1.1 - 2021
 
 Implementação da tabela hash extensível para a disciplina Algoritmos e Estruturas de Dados 3 do curso de Ciência da computação da PUC Minas.
 
