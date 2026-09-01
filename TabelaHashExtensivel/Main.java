@@ -2,37 +2,34 @@
 TESTE DE TABELA HASH EXTENSÍVEL
 
 Este programa principal serve para demonstrar o uso
-da tabela hash extensível como um índice indireto.
+da tabela hash extensível como um índice direto.
 Aqui, cada elemento do índice será composto pelo par
-(email, ID) representado por meio de um objeto da classe
-ParEmailID.
-
-Para funcionamento como índice direto, precisaríamos de 
-mais uma classe que contivesse o par (ID, endereço).
-Mas isso fica por sua conta ;)
+(ID, endereco) representado por meio de um objeto da classe
+ParIDEndereco.
 
 Implementado pelo Prof. Marcos Kutova
-v1.1 - 2021
+v1.0 - 2025
 */
 
 import java.util.Scanner;
 import java.io.File;
 import aed3.HashExtensivel;
+import aed3.ParIDEndereco;
 
 public class Main {
 
   // Método principal apenas para testes
   public static void main(String[] args) {
 
-    HashExtensivel<ParEmailID> he;
+    HashExtensivel<ParIDEndereco> he;
     Scanner console = new Scanner(System.in);
-    String nomeArquivo = "pessoas";
+    String nomeArquivo = "livros";
 
     try {
       File d = new File("dados");
       if (!d.exists())
         d.mkdir();
-      he = new HashExtensivel<>(ParEmailID.class.getConstructor(), 4, "dados/" + nomeArquivo + ".hash_d.db",
+      he = new HashExtensivel<>(ParIDEndereco.class.getConstructor(), 4, "dados/" + nomeArquivo + ".hash_d.db",
           "dados/" + nomeArquivo + ".hash_c.db");
 
       int opcao;
@@ -55,28 +52,27 @@ public class Main {
           case 1: {
             System.out.println("\nINCLUSÃO");
 
-            System.out.print("E-mail: ");
-            String email = console.nextLine();
             System.out.print("ID: ");
             int id = Integer.valueOf(console.nextLine());
-            he.create(new ParEmailID(email, id));
+            System.out.print("Endereço: ");
+            long endereco = Long.valueOf(console.nextLine());
+            he.create(new ParIDEndereco(id, endereco));
             he.print();
           }
             break;
           case 2: {
             System.out.println("\nBUSCA");
 
-            System.out.print("E-mail: ");
-            String email = console.nextLine();
-            System.out.print("Dados: " + he.read(ParEmailID.hash(email)));
+            System.out.print("ID: ");
+            int id = Integer.valueOf(console.nextLine());
+            System.out.print("Dados: " + he.read(id));
           }
             break;
           case 3: {
             System.out.println("\nEXCLUSÃO");
-
-            System.out.print("E-mail: ");
-            String email = console.nextLine();
-            he.delete(email.hashCode());
+            System.out.print("ID: ");
+            int id = Integer.valueOf(console.nextLine());
+            he.delete(id);
             he.print();
           }
             break;
