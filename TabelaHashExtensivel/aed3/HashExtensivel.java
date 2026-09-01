@@ -160,6 +160,7 @@ public class HashExtensivel<T extends InterfaceHashExtensivel> {
       return quantidade == quantidadeMaxima;
     }
 
+    @Override
     public String toString() {
       String s = "Profundidade Local: " + profundidadeLocal + "\nQuantidade: " + quantidade + "\n| ";
       int i = 0;
@@ -217,6 +218,7 @@ public class HashExtensivel<T extends InterfaceHashExtensivel> {
       }
     }
 
+    @Override
     public String toString() {
       String s = "Profundidade global: " + profundidadeGlobal;
       int i = 0;
@@ -300,7 +302,7 @@ public class HashExtensivel<T extends InterfaceHashExtensivel> {
 
   public boolean create(T elem) throws Exception {
 
-    // Carrega TODO o diretório para a memória
+    // Carrega todo o diretório para a memória
     byte[] bd = new byte[(int) arqDiretorio.length()];
     arqDiretorio.seek(0);
     arqDiretorio.read(bd);
@@ -478,7 +480,7 @@ public class HashExtensivel<T extends InterfaceHashExtensivel> {
         System.out.println(c + "\n");
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      System.out.println("Erro: " + e.getMessage());
     }
   }
 
