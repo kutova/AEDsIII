@@ -15,19 +15,19 @@ import java.util.Scanner;
 import java.io.File;
 import aed3.ArvoreBMais;
 
-public class Main {
+public class MainRelacionamento {
 
   // Método principal apenas para testes
   public static void main(String[] args) {
 
-    ArvoreBMais<ParNomeId> arvore;
+    ArvoreBMais<ParIdId> arvore;
     Scanner console = new Scanner(System.in);
 
     try {
       File d = new File("dados");
       if (!d.exists())
         d.mkdir();
-      arvore = new ArvoreBMais<>(ParNomeId.class.getConstructor(), 5, "dados/arvore.db");
+      arvore = new ArvoreBMais<>(ParIdId.class.getConstructor(), 5, "dados/arvore_relacionamento.db");
 
       int opcao;
       do {
@@ -49,29 +49,34 @@ public class Main {
         switch (opcao) {
           case 1: {
             System.out.println("\nINCLUSÃO");
-            String nome;
-            int id = 0;
+            int id1=0, id2=0;
             try {
-              System.out.print("Nome: ");
-              nome = console.nextLine();
-              System.out.print("ID: ");
-              id = Integer.valueOf(console.nextLine());
+              System.out.print("ID 1: ");
+              id1 = Integer.valueOf(console.nextLine());
+              System.out.print("ID 2: ");
+              id2 = Integer.valueOf(console.nextLine());
             } catch (Exception e) {
               System.out.println("Dados inválidos!");
               break;
             }
-            arvore.create(new ParNomeId(nome, id));
+            arvore.create(new ParIdId(id1, id2));
             arvore.print();
           }
             break;
           case 2: {
             System.out.println("\nBUSCA");
-            System.out.print("Nome: ");
-            String nome = console.nextLine();
+            int id1=0;
+            try {
+                System.out.print("ID 1: ");
+                id1 = Integer.valueOf(console.nextLine());
+            } catch (Exception e) {
+              System.out.println("Dados inválidos!");
+              break;
+            }
             // Ao passar o segundo valor como -1, ele funciona como um coringa
             // de acordo com a implementação do método compareTo na classe
             // ParIntInt
-            ArrayList<ParNomeId> lista = arvore.read(new ParNomeId(nome, -1));
+            ArrayList<ParIdId> lista = arvore.read(new ParIdId(id1, -1));
 
             // System.out.print("Num2: ");
             // int id = Integer.valueOf(console.nextLine());
@@ -83,17 +88,23 @@ public class Main {
             break;
           case 3: {
             System.out.println("\nEXCLUSÃO");
-            System.out.print("Nome: ");
-            String nome = console.nextLine();
-            System.out.print("Num2: ");
-            int id = Integer.valueOf(console.nextLine());
-            arvore.delete(new ParNomeId(nome, id));
+            int id1=0, id2=0;
+            try {
+              System.out.print("ID 1: ");
+              id1 = Integer.valueOf(console.nextLine());
+              System.out.print("ID 2: ");
+              id2 = Integer.valueOf(console.nextLine());
+            } catch (Exception e) {
+              System.out.println("Dados inválidos!");
+              break;
+            }
+            arvore.delete(new ParIdId(id1, id2));
             arvore.print();
           }
             break;
           case 4: {
             System.out.println("\nLISTA COMPLETA");
-            ArrayList<ParNomeId> lista = arvore.read(null);
+            ArrayList<ParIdId> lista = arvore.read(null);
             for (int i = 0; i < lista.size(); i++)
               System.out.print(lista.get(i) + " ");
           }

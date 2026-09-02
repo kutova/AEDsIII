@@ -9,20 +9,20 @@
  * - boolean delete(RegistroArvoreBMais objeto)
  * 
  * Implementado pelo Prof. Marcos Kutova
- * v2.0 - 2021
+ * v2.1 - 2026
  */
 package aed3;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 
 // Esta versão da árvore funciona apenas como um conjunto de par de chaves.
 // A primeira chave pode repetir na árvore, mas não o par de chaves, 
 // isto é, quando a primeira chave de dois elementos for igual, a segunda chave,
 // deve ser necessariamente diferente.
 
-public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
+public class ArvoreBMais<T extends InterfaceArvoreBMais<T>> {
 
     private int ordem; // Número máximo de filhos que uma página pode conter
     private int maxElementos; // Variável igual a ordem - 1 para facilitar a clareza do código
@@ -33,8 +33,8 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
     // Variáveis usadas nas funções recursivas (já que não é possível passar valores
     // por referência)
-    private T elemAux;
-    private long paginaAux;
+    private T auxElemento;
+    private long auxPonteiroPagina;
     private boolean cresceu;
     private boolean diminuiu;
 
@@ -75,7 +75,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
         // Retorna o vetor de bytes que representa a página para armazenamento em
         // arquivo
-        protected byte[] toByteArray() throws IOException {
+        protected byte[] serialize() throws IOException {
 
             // Um fluxo de bytes é usado para construção do vetor de bytes
             ByteArrayOutputStream ba = new ByteArrayOutputStream();
@@ -88,7 +88,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             int i = 0;
             while (i < this.elementos.size()) {
                 out.writeLong(this.filhos.get(i).longValue());
-                out.write(this.elementos.get(i).toByteArray());
+                out.write(this.elementos.get(i).serialize());
                 i++;
             }
             if (this.filhos.size() > 0)
@@ -112,7 +112,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         }
 
         // Reconstrói uma página a partir de um vetor de bytes lido no arquivo
-        public void fromByteArray(byte[] buffer) throws Exception {
+        public void deserialize(byte[] buffer) throws Exception {
 
             // Usa um fluxo de bytes para leitura dos atributos
             ByteArrayInputStream ba = new ByteArrayInputStream(buffer);
@@ -131,7 +131,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 byte[] registro = new byte[TAMANHO_ELEMENTO];
                 in.read(registro);
                 elem = this.construtor.newInstance();
-                elem.fromByteArray(registro);
+                elem.deserialize(registro);
                 this.elementos.add(elem);
                 i++;
             }
@@ -190,51 +190,51 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
     // Busca recursiva. Este método recebe a referência de uma página e busca
     // pela chave na mesma. A busca continua pelos filhos, se houverem.
-    private ArrayList<T> read1(T elem, long pagina) throws Exception {
+    private ArrayList<T> read1(T elem, long enderecoPagina) throws Exception {
 
         // Como a busca é recursiva, a descida para um filho inexistente
         // (filho de uma página folha) retorna um vetor vazio.
-        if (pagina == -1) {
+        if (enderecoPagina == -1) {
             ArrayList<T> resposta = new ArrayList<>();
             return resposta;
         }
 
         // Reconstrói a página passada como referência a partir
         // do registro lido no arquivo
-        arquivo.seek(pagina);
-        Pagina pa = new Pagina(construtor, ordem);
-        byte[] buffer = new byte[pa.TAMANHO_PAGINA];
+        arquivo.seek(enderecoPagina);
+        Pagina pagina = new Pagina(construtor, ordem);
+        byte[] buffer = new byte[pagina.TAMANHO_PAGINA];
         arquivo.read(buffer);
-        pa.fromByteArray(buffer);
+        pagina.deserialize(buffer);
 
         // Encontra o ponto em que a chave deve estar na página
         // Nesse primeiro passo, todas as chaves menores que a chave buscada
         // são ultrapassadas
         int i = 0;
-        while (elem!=null && i < pa.elementos.size() && elem.compareTo(pa.elementos.get(i)) > 0) {
+        while (elem!=null && i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) > 0) {
             i++;
         }
 
         // Chave encontrada (ou pelo menos o ponto onde ela deveria estar).
         // Segundo passo - testa se a chave é a chave buscada e se está em uma folha
         // Obs.: em uma árvore B+, todas as chaves válidas estão nas folhas
-        if (i < pa.elementos.size() && pa.filhos.get(0) == -1 && (elem==null || elem.compareTo(pa.elementos.get(i)) == 0)) {
+        if (i < pagina.elementos.size() && pagina.filhos.get(0) == -1 && (elem==null || elem.compareTo(pagina.elementos.get(i)) == 0)) {
 
             // Cria a lista de retorno e insere os elementos encontrados
             ArrayList<T> lista = new ArrayList<>();
-            while (elem==null || elem.compareTo(pa.elementos.get(i)) <= 0) {
+            while (elem==null || elem.compareTo(pagina.elementos.get(i)) <= 0) {
 
-                if (elem==null || elem.compareTo(pa.elementos.get(i)) == 0)
-                    lista.add(pa.elementos.get(i));
+                if (elem==null || elem.compareTo(pagina.elementos.get(i)) == 0)
+                    lista.add(pagina.elementos.get(i));
                 i++;
 
                 // Se chegar ao fim da folha, então avança para a folha seguinte
-                if (i == pa.elementos.size()) {
-                    if (pa.proxima == -1)
+                if (i == pagina.elementos.size()) {
+                    if (pagina.proxima == -1)
                         break;
-                    arquivo.seek(pa.proxima);
+                    arquivo.seek(pagina.proxima);
                     arquivo.read(buffer);
-                    pa.fromByteArray(buffer);
+                    pagina.deserialize(buffer);
                     i = 0;
                 }
             }
@@ -244,38 +244,38 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         // Terceiro passo - se a chave não tiver sido encontrada nesta folha,
         // testa se ela está na próxima folha. Isso pode ocorrer devido ao
         // processo de ordenação.
-        else if (i == pa.elementos.size() && pa.filhos.get(0) == -1) {
+        else if (i == pagina.elementos.size() && pagina.filhos.get(0) == -1) {
 
             // Testa se há uma próxima folha. Nesse caso, retorna um vetor vazio
-            if (pa.proxima == -1) {
+            if (pagina.proxima == -1) {
                 ArrayList<T> resposta = new ArrayList<>();
                 return resposta;
             }
 
             // Lê a próxima folha
-            arquivo.seek(pa.proxima);
+            arquivo.seek(pagina.proxima);
             arquivo.read(buffer);
-            pa.fromByteArray(buffer);
+            pagina.deserialize(buffer);
 
             // Testa se a chave é a primeira da próxima folha
             i = 0;
-            if (elem.compareTo(pa.elementos.get(i)) <= 0) {
+            if (elem.compareTo(pagina.elementos.get(i)) <= 0) {
 
                 // Cria a lista de retorno
                 ArrayList<T> lista = new ArrayList<>();
 
                 // Testa se a chave foi encontrada, e adiciona todas as chaves
                 // secundárias
-                while (elem.compareTo(pa.elementos.get(i)) <= 0) {
-                    if (elem.compareTo(pa.elementos.get(i)) == 0)
-                        lista.add(pa.elementos.get(i));
+                while (elem.compareTo(pagina.elementos.get(i)) <= 0) {
+                    if (elem.compareTo(pagina.elementos.get(i)) == 0)
+                        lista.add(pagina.elementos.get(i));
                     i++;
-                    if (i == pa.elementos.size()) {
-                        if (pa.proxima == -1)
+                    if (i == pagina.elementos.size()) {
+                        if (pagina.proxima == -1)
                             break;
-                        arquivo.seek(pa.proxima);
+                        arquivo.seek(pagina.proxima);
                         arquivo.read(buffer);
-                        pa.fromByteArray(buffer);
+                        pagina.deserialize(buffer);
                         i = 0;
                     }
                 }
@@ -291,10 +291,10 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         }
 
         // Chave ainda não foi encontrada, continua a busca recursiva pela árvore
-        if (elem==null || i == pa.elementos.size() || elem.compareTo(pa.elementos.get(i)) <= 0)
-            return read1(elem, pa.filhos.get(i));
+        if (elem==null || i == pagina.elementos.size() || elem.compareTo(pagina.elementos.get(i)) <= 0)
+            return read1(elem, pagina.filhos.get(i));
         else
-            return read1(elem, pa.filhos.get(i + 1));
+            return read1(elem, pagina.filhos.get(i + 1));
     }
 
     // Inclusão de novos elementos na árvore. A inclusão é recursiva. A primeira
@@ -312,11 +312,11 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         // e crescimento da árvore. Assim, são usados os valores globais elemAux
         // e chave2Aux. Quando há uma divisão, as chaves promovidas são armazenadas
         // nessas variáveis.
-        elemAux = elem.clone();
+        auxElemento = elem.clone();
 
         // Se houver crescimento, então será criada uma página extra e será mantido um
         // ponteiro para essa página. Os valores também são globais.
-        paginaAux = -1;
+        auxPonteiroPagina = -1;
         cresceu = false;
 
         // Chamada recursiva para a inserção do par de chaves
@@ -327,12 +327,12 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
             // Cria a nova página que será a raiz. O ponteiro esquerdo da raiz
             // será a raiz antiga e o seu ponteiro direito será para a nova página.
-            Pagina novaPagina = new Pagina(construtor, ordem);
-            novaPagina.elementos = new ArrayList<>(this.maxElementos);
-            novaPagina.elementos.add(elemAux);
-            novaPagina.filhos = new ArrayList<>(this.maxFilhos);
-            novaPagina.filhos.add(pagina);
-            novaPagina.filhos.add(paginaAux);
+            Pagina novaRaiz = new Pagina(construtor, ordem);
+            novaRaiz.elementos = new ArrayList<>(this.maxElementos);
+            novaRaiz.elementos.add(auxElemento);
+            novaRaiz.filhos = new ArrayList<>(this.maxFilhos);
+            novaRaiz.filhos.add(pagina);
+            novaRaiz.filhos.add(auxPonteiroPagina);
 
             // Acha o espaço em disco. Testa se há páginas excluídas.
             arquivo.seek(8);
@@ -344,15 +344,17 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 Pagina pa_excluida = new Pagina(construtor, ordem);
                 byte[] buffer = new byte[pa_excluida.TAMANHO_PAGINA];
                 arquivo.read(buffer);
-                pa_excluida.fromByteArray(buffer);
+                pa_excluida.deserialize(buffer);
                 arquivo.seek(8);
                 arquivo.writeLong(pa_excluida.proxima);
             }
             arquivo.seek(end);
-            long raiz = arquivo.getFilePointer();
-            arquivo.write(novaPagina.toByteArray());
+            long ponteiroRaiz = arquivo.getFilePointer();
+            arquivo.write(novaRaiz.serialize());
+
+            // Atualiza o ponteiro para a raiz no cabeçalho do arquivo
             arquivo.seek(0);
-            arquivo.writeLong(raiz);
+            arquivo.writeLong(ponteiroRaiz);
             inserido = true;
         }
 
@@ -367,7 +369,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         // inicializa as variáveis globais de controle.
         if (pagina == -1) {
             cresceu = true;
-            paginaAux = -1;
+            auxPonteiroPagina = -1;
             return false;
         }
 
@@ -376,19 +378,19 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         Pagina pa = new Pagina(construtor, ordem);
         byte[] buffer = new byte[pa.TAMANHO_PAGINA];
         arquivo.read(buffer);
-        pa.fromByteArray(buffer);
+        pa.deserialize(buffer);
 
         // Busca o próximo ponteiro de descida. Como pode haver repetição
         // da primeira chave, a segunda também é usada como referência.
         // Nesse primeiro passo, todos os pares menores são ultrapassados.
         int i = 0;
-        while (i < pa.elementos.size() && (elemAux.compareTo(pa.elementos.get(i)) > 0)) {
+        while (i < pa.elementos.size() && (auxElemento.compareTo(pa.elementos.get(i)) > 0)) {
             i++;
         }
 
         // Testa se o registro já existe em uma folha. Se isso acontecer, então
         // a inclusão é cancelada.
-        if (i < pa.elementos.size() && pa.filhos.get(0) == -1 && elemAux.compareTo(pa.elementos.get(i)) == 0) {
+        if (i < pa.elementos.size() && pa.filhos.get(0) == -1 && auxElemento.compareTo(pa.elementos.get(i)) == 0) {
             cresceu = false;
             return false;
         }
@@ -396,7 +398,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         // Continua a busca recursiva por uma nova página. A busca continuará até o
         // filho inexistente de uma página folha ser alcançado.
         boolean inserido;
-        if (i == pa.elementos.size() || elemAux.compareTo(pa.elementos.get(i)) < 0)
+        if (i == pa.elementos.size() || auxElemento.compareTo(pa.elementos.get(i)) < 0)
             inserido = create1(pa.filhos.get(i));
         else
             inserido = create1(pa.filhos.get(i + 1));
@@ -417,12 +419,12 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
             // Puxa todos elementos para a direita, começando do último
             // para gerar o espaço para o novo elemento e insere o novo elemento
-            pa.elementos.add(i, elemAux);
-            pa.filhos.add(i + 1, paginaAux);
+            pa.elementos.add(i, auxElemento);
+            pa.filhos.add(i + 1, auxPonteiroPagina);
 
             // Escreve a página atualizada no arquivo
             arquivo.seek(pagina);
-            arquivo.write(pa.toByteArray());
+            arquivo.write(pa.serialize());
 
             // Encerra o processo de crescimento e retorna
             cresceu = false;
@@ -447,18 +449,18 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         // Testa o lado de inserção
         // Caso 1 - Novo registro deve ficar na página da esquerda
         if (i <= meio) {
-            pa.elementos.add(i, elemAux);
-            pa.filhos.add(i + 1, paginaAux);
+            pa.elementos.add(i, auxElemento);
+            pa.filhos.add(i + 1, auxPonteiroPagina);
 
             // Se a página for folha, seleciona o primeiro elemento da página
             // da direita para ser promovido, mantendo-o na folha
             if (pa.filhos.get(0) == -1)
-                elemAux = np.elementos.get(0).clone();
+                auxElemento = np.elementos.get(0).clone();
 
             // caso contrário, promove o maior elemento da página esquerda
             // removendo-o da página
             else {
-                elemAux = pa.elementos.remove(pa.elementos.size() - 1);
+                auxElemento = pa.elementos.remove(pa.elementos.size() - 1);
                 pa.filhos.remove(pa.filhos.size() - 1);
             }
         }
@@ -467,13 +469,13 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         else {
 
             int j = maxElementos - meio;
-            while (elemAux.compareTo(np.elementos.get(j - 1)) < 0)
+            while (auxElemento.compareTo(np.elementos.get(j - 1)) < 0)
                 j--;
-            np.elementos.add(j, elemAux);
-            np.filhos.add(j + 1, paginaAux);
+            np.elementos.add(j, auxElemento);
+            np.filhos.add(j + 1, auxPonteiroPagina);
 
             // Seleciona o primeiro elemento da página da direita para ser promovido
-            elemAux = np.elementos.get(0).clone();
+            auxElemento = np.elementos.get(0).clone();
 
             // Se não for folha, remove o elemento promovido da página
             if (pa.filhos.get(0) != -1) {
@@ -493,7 +495,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             Pagina pa_excluida = new Pagina(construtor, ordem);
             buffer = new byte[pa_excluida.TAMANHO_PAGINA];
             arquivo.read(buffer);
-            pa_excluida.fromByteArray(buffer);
+            pa_excluida.deserialize(buffer);
             arquivo.seek(8);
             arquivo.writeLong(pa_excluida.proxima);
         }
@@ -506,12 +508,12 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         }
 
         // Grava as páginas no arquivo
-        paginaAux = end;
-        arquivo.seek(paginaAux);
-        arquivo.write(np.toByteArray());
+        auxPonteiroPagina = end;
+        arquivo.seek(auxPonteiroPagina);
+        arquivo.write(np.serialize());
 
         arquivo.seek(pagina);
-        arquivo.write(pa.toByteArray());
+        arquivo.write(pa.serialize());
 
         return true;
     }
@@ -543,7 +545,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             Pagina pa = new Pagina(construtor, ordem);
             byte[] buffer = new byte[pa.TAMANHO_PAGINA];
             arquivo.read(buffer);
-            pa.fromByteArray(buffer);
+            pa.deserialize(buffer);
 
             // Se a página tiver 0 elementos, apenas atualiza o ponteiro para a raiz,
             // no cabeçalho do arquivo, para o seu primeiro filho e insere a raiz velha
@@ -558,7 +560,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 arquivo.seek(8);
                 arquivo.writeLong(pagina);
                 arquivo.seek(pagina);
-                arquivo.write(pa.toByteArray());
+                arquivo.write(pa.serialize());
             }
         }
 
@@ -585,7 +587,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         Pagina pa = new Pagina(construtor, ordem);
         byte[] buffer = new byte[pa.TAMANHO_PAGINA];
         arquivo.read(buffer);
-        pa.fromByteArray(buffer);
+        pa.deserialize(buffer);
 
         // Encontra a página em que o par de chaves está presente
         // Nesse primeiro passo, salta todas os pares de chaves menores
@@ -604,7 +606,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
             // Atualiza o registro da página no arquivo
             arquivo.seek(pagina);
-            arquivo.write(pa.toByteArray());
+            arquivo.write(pa.serialize());
 
             // Se a página contiver menos elementos do que o mínimo necessário,
             // indica a necessidade de fusão de páginas
@@ -638,9 +640,9 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
             Pagina pFilho = new Pagina(construtor, ordem);
             arquivo.seek(paginaFilho);
             arquivo.read(buffer);
-            pFilho.fromByteArray(buffer);
+            pFilho.deserialize(buffer);
 
-            // Cria uma página para o irmão (da direita ou esquerda)
+            // Cria uma página para o irmão (da esquerda ou direita)
             long paginaIrmaoEsq = -1, paginaIrmaoDir = -1;
             Pagina pIrmaoEsq = null, pIrmaoDir = null; // inicializados com null para controle de existência
 
@@ -650,14 +652,14 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 pIrmaoEsq = new Pagina(construtor, ordem);
                 arquivo.seek(paginaIrmaoEsq);
                 arquivo.read(buffer);
-                pIrmaoEsq.fromByteArray(buffer);
+                pIrmaoEsq.deserialize(buffer);
             }
             if (diminuido < pa.elementos.size()) { // possui um irmão direito, pois não é o último filho do pai
                 paginaIrmaoDir = pa.filhos.get(diminuido + 1);
                 pIrmaoDir = new Pagina(construtor, ordem);
                 arquivo.seek(paginaIrmaoDir);
                 arquivo.read(buffer);
-                pIrmaoDir.fromByteArray(buffer);
+                pIrmaoDir.deserialize(buffer);
             }
 
             // Verifica se o irmão esquerdo existe e pode ceder algum elemento
@@ -675,7 +677,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
                 // Copia o elemento vindo do irmão para o pai (página atual)
                 pa.elementos.set(diminuido - 1, pFilho.elementos.get(0));
 
-                // Reduz o elemento no irmão
+                // Reduz o elemento no irmão (copia o ponteiro também)
                 pFilho.filhos.add(0, pIrmaoEsq.filhos.remove(pIrmaoEsq.filhos.size() - 1));
 
             }
@@ -774,16 +776,16 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
 
             // Atualiza os demais registros
             arquivo.seek(pagina);
-            arquivo.write(pa.toByteArray());
+            arquivo.write(pa.serialize());
             arquivo.seek(paginaFilho);
-            arquivo.write(pFilho.toByteArray());
+            arquivo.write(pFilho.serialize());
             if (pIrmaoEsq != null) {
                 arquivo.seek(paginaIrmaoEsq);
-                arquivo.write(pIrmaoEsq.toByteArray());
+                arquivo.write(pIrmaoEsq.serialize());
             }
             if (pIrmaoDir != null) {
                 arquivo.seek(paginaIrmaoDir);
-                arquivo.write(pIrmaoDir.toByteArray());
+                arquivo.write(pIrmaoDir.serialize());
             }
         }
         return excluido;
@@ -814,7 +816,7 @@ public class ArvoreBMais<T extends RegistroArvoreBMais<T>> {
         Pagina pa = new Pagina(construtor, ordem);
         byte[] buffer = new byte[pa.TAMANHO_PAGINA];
         arquivo.read(buffer);
-        pa.fromByteArray(buffer);
+        pa.deserialize(buffer);
 
         // Imprime a página
         String endereco = String.format("%04d", pagina);
