@@ -7,7 +7,7 @@ da Árvore B+ como um índice indireto de uma entidade qualquer.
 Aqui, cada elemento será composto por uma string e um número inteiro.
 
 Implementado pelo Prof. Marcos Kutova
-v1.1 - 2021
+v1.2 - 2026
 */
 
 import aed3.ArvoreBMais;
@@ -17,7 +17,6 @@ import java.util.Scanner;
 
 public class Main1_NomeID {
 
-  // Método principal apenas para testes
   public static void main(String[] args) {
 
     ArvoreBMais<ParNomeId> arvore;
@@ -35,10 +34,11 @@ public class Main1_NomeID {
         System.out.println("              MENU");
         System.out.println("-------------------------------");
         System.out.println("1 - Inserir");
-        System.out.println("2 - Buscar");
+        System.out.println("2 - Buscar por nome");
         System.out.println("3 - Excluir");
         System.out.println("4 - Listar todas");
         System.out.println("5 - Imprimir");
+        System.out.println("6 - Buscar por nome (paginado)");
         System.out.println("0 - Sair");
         try {
           opcao = Integer.valueOf(console.nextLine());
@@ -49,59 +49,98 @@ public class Main1_NomeID {
         switch (opcao) {
           case 1: {
             System.out.println("\nINCLUSÃO");
-            String nome;
-            int id = 0;
             try {
               System.out.print("Nome: ");
-              nome = console.nextLine();
+              String nome = console.nextLine();
               System.out.print("ID: ");
-              id = Integer.valueOf(console.nextLine());
+              int id = Integer.valueOf(console.nextLine());
+              arvore.create(new ParNomeId(nome, id));
+              arvore.print();
             } catch (Exception e) {
               System.out.println("Dados inválidos!");
-              break;
             }
-            arvore.create(new ParNomeId(nome, id));
-            arvore.print();
           }
             break;
+
           case 2: {
             System.out.println("\nBUSCA");
             System.out.print("Nome: ");
             String nome = console.nextLine();
-            // Ao passar o segundo valor como -1, ele funciona como um coringa
-            // de acordo com a implementação do método compareTo na classe
-            // ParIntInt
-            ArrayList<ParNomeId> lista = arvore.read(new ParNomeId(nome, -1));
-
-            // System.out.print("Num2: ");
-            // int id = Integer.valueOf(console.nextLine());
-            // ArrayList<ParIntInt> lista = arvore.read(new ParIntInt(nome, id));
+            ArrayList<ParNomeId> lista = arvore.readAll(new ParNomeId(nome));
             System.out.print("Resposta: ");
-            for (int i = 0; i < lista.size(); i++)
-              System.out.print(lista.get(i) + " ");
+            for (ParNomeId par : lista)
+              System.out.print(par + " ");
+            System.out.println();
           }
             break;
+
           case 3: {
             System.out.println("\nEXCLUSÃO");
-            System.out.print("Nome: ");
-            String nome = console.nextLine();
-            System.out.print("Num2: ");
-            int id = Integer.valueOf(console.nextLine());
-            arvore.delete(new ParNomeId(nome, id));
-            arvore.print();
+            try {
+              System.out.print("Nome: ");
+              String nome = console.nextLine();
+              System.out.print("ID: ");
+              int id = Integer.valueOf(console.nextLine());
+              arvore.delete(new ParNomeId(nome, id));
+              arvore.print();
+            } catch (Exception e) {
+              System.out.println("Dados inválidos!");
+            }
           }
             break;
+
           case 4: {
             System.out.println("\nLISTA COMPLETA");
-            ArrayList<ParNomeId> lista = arvore.read(null);
-            for (int i = 0; i < lista.size(); i++)
-              System.out.print(lista.get(i) + " ");
+            ArrayList<ParNomeId> lista = arvore.readAll();
+            for (ParNomeId par : lista)
+              System.out.print(par + " ");
+            System.out.println();
           }
             break;
+
           case 5: {
             arvore.print();
           }
             break;
+
+          case 6: {
+            System.out.println("\nBUSCA PAGINADA");
+            System.out.print("Nome: ");
+            String nome = console.nextLine();
+            System.out.print("Quantidade de resultados por página: ");
+            int quantidade = Integer.valueOf(console.nextLine());
+            ParNomeId chave = new ParNomeId(nome);
+            ParNomeId cursor = null;
+            boolean continuar = true;
+
+            while (continuar) {
+              ArrayList<ParNomeId> pagina = arvore.readPage(chave, cursor, quantidade);
+
+              if (pagina.isEmpty()) {
+                if (cursor == null)
+                  System.out.println("Nenhum resultado encontrado.");
+                else
+                  System.out.println("Fim dos resultados.");
+                break;
+              }
+
+              System.out.println();
+              for (ParNomeId par : pagina)
+                System.out.println(par);
+
+              cursor = pagina.get(pagina.size() - 1);
+
+              if (pagina.size() < quantidade) {
+                System.out.println("\nFim dos resultados.");
+                break;
+              }
+
+              System.out.print("\nENTER para a próxima página ou Q para sair: ");
+              continuar = !console.nextLine().equalsIgnoreCase("q");
+            }
+          }
+            break;
+
           case 0:
             break;
           default:

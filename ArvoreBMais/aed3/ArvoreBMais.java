@@ -5,7 +5,9 @@
  * apenas para manter a coerência com o resto da
  * disciplina:
  * - boolean create(RegistroArvoreBMais objeto)   
- * - int[] read(RegistroArvoreBMais objeto)
+ * - T read(T objeto)
+ * - ArrayList<T> readAll(T objeto)
+ * - ArrayList<T> readPage(T objeto, T depoisDe, int quantidade)
  * - boolean delete(RegistroArvoreBMais objeto)
  * 
  * Implementado pelo Prof. Marcos Kutova
@@ -168,133 +170,210 @@ public class ArvoreBMais<T extends InterfaceArvoreBMais<T>> {
         return raiz == -1;
     }
 
-    // Busca recursiva por um elemento a partir da chave. Este metodo invoca
-    // o método recursivo read1, passando a raiz como referência.
-    // O método retorna a lista de elementos que possuem a chave (considerando
-    // a possibilidade chaves repetidas)
-    public ArrayList<T> read(T elem) throws Exception {
+    // Busca um elemento pela chave completa. Como o par completo de chaves é
+    // único na árvore, retorna o elemento encontrado ou null.
+    public T read(T elem) throws Exception {
 
-        // Recupera a raiz da árvore
         long raiz;
         arquivo.seek(0);
         raiz = arquivo.readLong();
 
-        // Executa a busca recursiva
-        if (raiz != -1)
-            return read1(elem, raiz);
-        else {
-            ArrayList<T> resposta = new ArrayList<>();
-            return resposta;
-        }
+        if (raiz == -1)
+            return null;
+
+        return read1(elem, raiz);
     }
 
-    // Busca recursiva. Este método recebe a referência de uma página e busca
-    // pela chave na mesma. A busca continua pelos filhos, se houverem.
-    private ArrayList<T> read1(T elem, long enderecoPagina) throws Exception {
+    // Busca recursiva pela chave completa.
+    private T read1(T elem, long enderecoPagina) throws Exception {
 
-        // Como a busca é recursiva, a descida para um filho inexistente
-        // (filho de uma página folha) retorna um vetor vazio.
-        if (enderecoPagina == -1) {
-            ArrayList<T> resposta = new ArrayList<>();
-            return resposta;
-        }
+        if (enderecoPagina == -1)
+            return null;
 
-        // Reconstrói a página passada como referência a partir
-        // do registro lido no arquivo
         arquivo.seek(enderecoPagina);
         Pagina pagina = new Pagina(construtor, ordem);
         byte[] buffer = new byte[pagina.TAMANHO_PAGINA];
         arquivo.read(buffer);
         pagina.deserialize(buffer);
 
-        // Encontra o ponto em que a chave deve estar na página
-        // Nesse primeiro passo, todas as chaves menores que a chave buscada
-        // são ultrapassadas
         int i = 0;
-        while (elem!=null && i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) > 0) {
+        while (i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) > 0)
             i++;
+
+        // Nas folhas estão todos os elementos válidos.
+        if (pagina.filhos.get(0) == -1) {
+            if (i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) == 0)
+                return pagina.elementos.get(i);
+
+            // Em uma B+, uma chave separadora pode coincidir com o primeiro elemento
+            // da folha seguinte. Este teste também torna a busca robusta nesse limite.
+            if (i == pagina.elementos.size() && pagina.proxima != -1) {
+                arquivo.seek(pagina.proxima);
+                arquivo.read(buffer);
+                pagina.deserialize(buffer);
+                if (!pagina.elementos.isEmpty() && elem.compareTo(pagina.elementos.get(0)) == 0)
+                    return pagina.elementos.get(0);
+            }
+            return null;
         }
 
-        // Chave encontrada (ou pelo menos o ponto onde ela deveria estar).
-        // Segundo passo - testa se a chave é a chave buscada e se está em uma folha
-        // Obs.: em uma árvore B+, todas as chaves válidas estão nas folhas
-        if (i < pagina.elementos.size() && pagina.filhos.get(0) == -1 && (elem==null || elem.compareTo(pagina.elementos.get(i)) == 0)) {
+        // Em páginas internas, uma chave igual à separadora pertence ao filho da direita.
+        if (i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) == 0)
+            return read1(elem, pagina.filhos.get(i + 1));
+        else
+            return read1(elem, pagina.filhos.get(i));
+    }
 
-            // Cria a lista de retorno e insere os elementos encontrados
-            ArrayList<T> lista = new ArrayList<>();
-            while (elem==null || elem.compareTo(pagina.elementos.get(i)) <= 0) {
+    // Retorna todos os elementos armazenados na árvore, em ordem.
+    // Este método é útil para listagens completas e testes. Como a resposta
+    // inteira é materializada em memória, não deve ser usado para paginação.
+    public ArrayList<T> readAll() throws Exception {
 
-                if (elem==null || elem.compareTo(pagina.elementos.get(i)) == 0)
-                    lista.add(pagina.elementos.get(i));
-                i++;
+        ArrayList<T> lista = new ArrayList<>();
 
-                // Se chegar ao fim da folha, então avança para a folha seguinte
-                if (i == pagina.elementos.size()) {
-                    if (pagina.proxima == -1)
-                        break;
-                    arquivo.seek(pagina.proxima);
-                    arquivo.read(buffer);
-                    pagina.deserialize(buffer);
-                    i = 0;
-                }
-            }
+        arquivo.seek(0);
+        long enderecoPagina = arquivo.readLong();
+        if (enderecoPagina == -1)
             return lista;
+
+        Pagina pagina = new Pagina(construtor, ordem);
+        byte[] buffer = new byte[pagina.TAMANHO_PAGINA];
+
+        // Desce sempre pelo primeiro filho até alcançar a folha mais à esquerda.
+        while (enderecoPagina != -1) {
+            arquivo.seek(enderecoPagina);
+            arquivo.read(buffer);
+            pagina.deserialize(buffer);
+            if (pagina.filhos.get(0) == -1)
+                break;
+            enderecoPagina = pagina.filhos.get(0);
         }
 
-        // Terceiro passo - se a chave não tiver sido encontrada nesta folha,
-        // testa se ela está na próxima folha. Isso pode ocorrer devido ao
-        // processo de ordenação.
-        else if (i == pagina.elementos.size() && pagina.filhos.get(0) == -1) {
+        // Percorre as folhas encadeadas.
+        while (enderecoPagina != -1) {
+            arquivo.seek(enderecoPagina);
+            arquivo.read(buffer);
+            pagina.deserialize(buffer);
+            lista.addAll(pagina.elementos);
+            enderecoPagina = pagina.proxima;
+        }
 
-            // Testa se há uma próxima folha. Nesse caso, retorna um vetor vazio
-            if (pagina.proxima == -1) {
-                ArrayList<T> resposta = new ArrayList<>();
-                return resposta;
-            }
+        return lista;
+    }
 
-            // Lê a próxima folha
-            arquivo.seek(pagina.proxima);
+    // Retorna todos os elementos cuja chave principal corresponde à chave de leitura de elem.
+    public ArrayList<T> readAll(T elem) throws Exception {
+        return readPage(elem, null, Integer.MAX_VALUE);
+    }
+
+    // Retorna, no máximo, quantidade elementos cuja chave principal corresponde
+    // à chave de leitura de elem. Se depoisDe for diferente de null, a leitura começa no primeiro
+    // elemento posterior a depoisDe. Assim, o último elemento de uma página pode
+    // ser usado como cursor para a página seguinte.
+    public ArrayList<T> readPage(T elem, T depoisDe, int quantidade) throws Exception {
+
+        if (quantidade <= 0)
+            throw new IllegalArgumentException("A quantidade deve ser maior que zero.");
+
+        if (depoisDe != null && elem.compareToKeyRead(depoisDe) != 0)
+            throw new IllegalArgumentException("O cursor deve possuir a mesma chave principal da busca.");
+
+        ArrayList<T> lista = new ArrayList<>();
+
+        long raiz;
+        arquivo.seek(0);
+        raiz = arquivo.readLong();
+        if (raiz == -1)
+            return lista;
+
+        // Na primeira página, procura a primeira folha que pode conter a chave principal.
+        // Nas páginas seguintes, usa o cursor completo para chegar diretamente à região
+        // em que a leitura deve continuar.
+        long enderecoFolha = depoisDe == null
+                ? findLeafByKey(elem, raiz)
+                : findLeafByElement(depoisDe, raiz);
+
+        if (enderecoFolha == -1)
+            return lista;
+
+        Pagina pagina = new Pagina(construtor, ordem);
+        byte[] buffer = new byte[pagina.TAMANHO_PAGINA];
+
+        while (enderecoFolha != -1 && lista.size() < quantidade) {
+            arquivo.seek(enderecoFolha);
             arquivo.read(buffer);
             pagina.deserialize(buffer);
 
-            // Testa se a chave é a primeira da próxima folha
-            i = 0;
-            if (elem.compareTo(pagina.elementos.get(i)) <= 0) {
+            for (int i = 0; i < pagina.elementos.size() && lista.size() < quantidade; i++) {
+                T atual = pagina.elementos.get(i);
+                int c = elem.compareToKeyRead(atual);
 
-                // Cria a lista de retorno
-                ArrayList<T> lista = new ArrayList<>();
+                // A chave procurada ainda está adiante.
+                if (c > 0)
+                    continue;
 
-                // Testa se a chave foi encontrada, e adiciona todas as chaves
-                // secundárias
-                while (elem.compareTo(pagina.elementos.get(i)) <= 0) {
-                    if (elem.compareTo(pagina.elementos.get(i)) == 0)
-                        lista.add(pagina.elementos.get(i));
-                    i++;
-                    if (i == pagina.elementos.size()) {
-                        if (pagina.proxima == -1)
-                            break;
-                        arquivo.seek(pagina.proxima);
-                        arquivo.read(buffer);
-                        pagina.deserialize(buffer);
-                        i = 0;
-                    }
-                }
+                // A chave procurada já foi ultrapassada.
+                if (c < 0)
+                    return lista;
 
-                return lista;
+                // Na continuação da paginação, ignora o cursor e tudo o que o antecede.
+                if (depoisDe == null || atual.compareTo(depoisDe) > 0)
+                    lista.add(atual);
             }
 
-            // Se não houver uma próxima página, retorna um vetor vazio
-            else {
-                ArrayList<T> resposta = new ArrayList<>();
-                return resposta;
-            }
+            enderecoFolha = pagina.proxima;
         }
 
-        // Chave ainda não foi encontrada, continua a busca recursiva pela árvore
-        if (elem==null || i == pagina.elementos.size() || elem.compareTo(pagina.elementos.get(i)) <= 0)
-            return read1(elem, pagina.filhos.get(i));
-        else
-            return read1(elem, pagina.filhos.get(i + 1));
+        return lista;
+    }
+
+    // Localiza a primeira folha que pode conter uma determinada chave principal.
+    private long findLeafByKey(T elem, long enderecoPagina) throws Exception {
+
+        if (enderecoPagina == -1)
+            return -1;
+
+        arquivo.seek(enderecoPagina);
+        Pagina pagina = new Pagina(construtor, ordem);
+        byte[] buffer = new byte[pagina.TAMANHO_PAGINA];
+        arquivo.read(buffer);
+        pagina.deserialize(buffer);
+
+        if (pagina.filhos.get(0) == -1)
+            return enderecoPagina;
+
+        int i = 0;
+        while (i < pagina.elementos.size() && elem.compareToKeyRead(pagina.elementos.get(i)) > 0)
+            i++;
+
+        // Se a chave principal for igual à separadora, desce pela esquerda para não
+        // perder ocorrências da mesma chave que possam ter ficado na folha anterior.
+        return findLeafByKey(elem, pagina.filhos.get(i));
+    }
+
+    // Localiza a folha correspondente à posição de um elemento completo.
+    private long findLeafByElement(T elem, long enderecoPagina) throws Exception {
+
+        if (enderecoPagina == -1)
+            return -1;
+
+        arquivo.seek(enderecoPagina);
+        Pagina pagina = new Pagina(construtor, ordem);
+        byte[] buffer = new byte[pagina.TAMANHO_PAGINA];
+        arquivo.read(buffer);
+        pagina.deserialize(buffer);
+
+        if (pagina.filhos.get(0) == -1)
+            return enderecoPagina;
+
+        int i = 0;
+        while (i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) > 0)
+            i++;
+
+        if (i < pagina.elementos.size() && elem.compareTo(pagina.elementos.get(i)) == 0)
+            i++;
+
+        return findLeafByElement(elem, pagina.filhos.get(i));
     }
 
     // Inclusão de novos elementos na árvore. A inclusão é recursiva. A primeira
@@ -309,9 +388,8 @@ public class ArvoreBMais<T extends InterfaceArvoreBMais<T>> {
 
         // O processo de inclusão permite que os valores passados como referência
         // sejam substituídos por outros valores, para permitir a divisão de páginas
-        // e crescimento da árvore. Assim, são usados os valores globais elemAux
-        // e chave2Aux. Quando há uma divisão, as chaves promovidas são armazenadas
-        // nessas variáveis.
+        // e crescimento da árvore. Assim, o elemento promovido é mantido na
+        // variável global auxElemento.
         auxElemento = elem.clone();
 
         // Se houver crescimento, então será criada uma página extra e será mantido um
@@ -532,8 +610,7 @@ public class ArvoreBMais<T extends InterfaceArvoreBMais<T>> {
         // variável global de controle da redução do tamanho da árvore
         diminuiu = false;
 
-        // Chama recursivamente a exclusão de registro (na elemAux e no
-        // chave2Aux) passando uma página como referência
+        // Chama recursivamente a exclusão do elemento, passando uma página como referência
         boolean excluido = delete1(elem, pagina);
 
         // Se a exclusão tiver sido possível e a página tiver reduzido seu tamanho,

@@ -20,7 +20,7 @@ public class ParIdId implements aed3.InterfaceArvoreBMais<ParIdId> {
 
   private int id1;
   private int id2;
-  private short TAMANHO = 8;
+  private static final short TAMANHO = 8;
 
   public ParIdId() {
     this(-1, -1);
@@ -49,12 +49,18 @@ public class ParIdId implements aed3.InterfaceArvoreBMais<ParIdId> {
   }
 
   public int compareTo(ParIdId a) {
-    if (this.id1 == a.id1)
-      // Só compara os valores de id2, se o id2 da busca for diferente de -1
-      // Isso é necessário para que seja possível a busca de lista
-      return this.id2 == -1 ? 0 : this.id2 - a.id2;
-    else
-      return this.id1 - a.id1;
+    int c = Integer.compare(this.id1, a.id1);
+    if (c != 0)
+      return c;
+    return Integer.compare(this.id2, a.id2);
+  }
+
+  public int compareToKey(ParIdId a) {
+    return Integer.compare(this.id1, a.id1);
+  }
+
+  public int compareToKeyRead(ParIdId a) {
+    return compareToKey(a);
   }
 
   public String toString() {

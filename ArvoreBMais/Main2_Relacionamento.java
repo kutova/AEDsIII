@@ -2,12 +2,12 @@
 TESTE DE ÁRVORE B+
 
 Este programa principal serve para demonstrar o uso
-da Árvore B+ como um índice indireto de uma entidade qualquer.
+da Árvore B+ para representar um relacionamento N:N.
 
-Aqui, cada elemento será composto por uma string e um número inteiro.
+Aqui, cada elemento será composto por dois números inteiros.
 
 Implementado pelo Prof. Marcos Kutova
-v1.1 - 2021
+v1.2 - 2026
 */
 
 import aed3.ArvoreBMais;
@@ -17,7 +17,6 @@ import java.util.Scanner;
 
 public class Main2_Relacionamento {
 
-  // Método principal apenas para testes
   public static void main(String[] args) {
 
     ArvoreBMais<ParIdId> arvore;
@@ -35,10 +34,11 @@ public class Main2_Relacionamento {
         System.out.println("              MENU");
         System.out.println("-------------------------------");
         System.out.println("1 - Inserir");
-        System.out.println("2 - Buscar");
+        System.out.println("2 - Buscar por ID1");
         System.out.println("3 - Excluir");
         System.out.println("4 - Listar todas");
         System.out.println("5 - Imprimir");
+        System.out.println("6 - Buscar por ID1 (paginado)");
         System.out.println("0 - Sair");
         try {
           opcao = Integer.valueOf(console.nextLine());
@@ -49,70 +49,106 @@ public class Main2_Relacionamento {
         switch (opcao) {
           case 1: {
             System.out.println("\nINCLUSÃO");
-            int id1=0, id2=0;
             try {
               System.out.print("ID 1: ");
-              id1 = Integer.valueOf(console.nextLine());
+              int id1 = Integer.valueOf(console.nextLine());
               System.out.print("ID 2: ");
-              id2 = Integer.valueOf(console.nextLine());
+              int id2 = Integer.valueOf(console.nextLine());
+              arvore.create(new ParIdId(id1, id2));
+              arvore.print();
             } catch (Exception e) {
               System.out.println("Dados inválidos!");
-              break;
             }
-            arvore.create(new ParIdId(id1, id2));
-            arvore.print();
           }
             break;
+
           case 2: {
             System.out.println("\nBUSCA");
-            int id1=0;
-            try {
-                System.out.print("ID 1: ");
-                id1 = Integer.valueOf(console.nextLine());
-            } catch (Exception e) {
-              System.out.println("Dados inválidos!");
-              break;
-            }
-            // Ao passar o segundo valor como -1, ele funciona como um coringa
-            // de acordo com a implementação do método compareTo na classe
-            // ParIntInt
-            ArrayList<ParIdId> lista = arvore.read(new ParIdId(id1, -1));
-
-            // System.out.print("Num2: ");
-            // int id = Integer.valueOf(console.nextLine());
-            // ArrayList<ParIntInt> lista = arvore.read(new ParIntInt(nome, id));
-            System.out.print("Resposta: ");
-            for (int i = 0; i < lista.size(); i++)
-              System.out.print(lista.get(i) + " ");
-          }
-            break;
-          case 3: {
-            System.out.println("\nEXCLUSÃO");
-            int id1=0, id2=0;
             try {
               System.out.print("ID 1: ");
-              id1 = Integer.valueOf(console.nextLine());
-              System.out.print("ID 2: ");
-              id2 = Integer.valueOf(console.nextLine());
+              int id1 = Integer.valueOf(console.nextLine());
+              ArrayList<ParIdId> lista = arvore.readAll(new ParIdId(id1));
+              System.out.print("Resposta: ");
+              for (ParIdId par : lista)
+                System.out.print(par + " ");
+              System.out.println();
             } catch (Exception e) {
               System.out.println("Dados inválidos!");
-              break;
             }
-            arvore.delete(new ParIdId(id1, id2));
-            arvore.print();
           }
             break;
+
+          case 3: {
+            System.out.println("\nEXCLUSÃO");
+            try {
+              System.out.print("ID 1: ");
+              int id1 = Integer.valueOf(console.nextLine());
+              System.out.print("ID 2: ");
+              int id2 = Integer.valueOf(console.nextLine());
+              arvore.delete(new ParIdId(id1, id2));
+              arvore.print();
+            } catch (Exception e) {
+              System.out.println("Dados inválidos!");
+            }
+          }
+            break;
+
           case 4: {
             System.out.println("\nLISTA COMPLETA");
-            ArrayList<ParIdId> lista = arvore.read(null);
-            for (int i = 0; i < lista.size(); i++)
-              System.out.print(lista.get(i) + " ");
+            ArrayList<ParIdId> lista = arvore.readAll();
+            for (ParIdId par : lista)
+              System.out.print(par + " ");
+            System.out.println();
           }
             break;
+
           case 5: {
             arvore.print();
           }
             break;
+
+          case 6: {
+            System.out.println("\nBUSCA PAGINADA");
+            try {
+              System.out.print("ID 1: ");
+              int id1 = Integer.valueOf(console.nextLine());
+              System.out.print("Quantidade de resultados por página: ");
+              int quantidade = Integer.valueOf(console.nextLine());
+              ParIdId chave = new ParIdId(id1);
+              ParIdId cursor = null;
+              boolean continuar = true;
+
+              while (continuar) {
+                ArrayList<ParIdId> pagina = arvore.readPage(chave, cursor, quantidade);
+
+                if (pagina.isEmpty()) {
+                  if (cursor == null)
+                    System.out.println("Nenhum resultado encontrado.");
+                  else
+                    System.out.println("Fim dos resultados.");
+                  break;
+                }
+
+                System.out.println();
+                for (ParIdId par : pagina)
+                  System.out.println(par);
+
+                cursor = pagina.get(pagina.size() - 1);
+
+                if (pagina.size() < quantidade) {
+                  System.out.println("\nFim dos resultados.");
+                  break;
+                }
+
+                System.out.print("\nENTER para a próxima página ou Q para sair: ");
+                continuar = !console.nextLine().equalsIgnoreCase("q");
+              }
+            } catch (Exception e) {
+              System.out.println("Dados inválidos!");
+            }
+          }
+            break;
+
           case 0:
             break;
           default:

@@ -20,7 +20,11 @@ public interface InterfaceArvoreBMais<T> {
 
   public void deserialize(byte[] ba) throws IOException; // vetor de bytes a ser usado na construção do elemento
 
-  public int compareTo(T obj); // compara dois elementos
+  public int compareTo(T obj); // compara o elemento completo (ordenação da árvore)
+
+  public int compareToKey(T obj); // compara a chave principal para ordenação
+
+  public int compareToKeyRead(T obj); // compara a chave principal nas operações de leitura
 
   public T clone(); // clonagem de objetos
 

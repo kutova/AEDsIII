@@ -22,7 +22,7 @@ public class ParNomeId implements aed3.InterfaceArvoreBMais<ParNomeId> {
 
   private String nome;
   private int id;
-  private short TAMANHO = 30;
+  private static final short TAMANHO = 30;
 
   public ParNomeId() throws Exception {
     this("", -1);
@@ -54,22 +54,23 @@ public class ParNomeId implements aed3.InterfaceArvoreBMais<ParNomeId> {
   }
 
   public int compareTo(ParNomeId a) {  
+    int c = transforma(this.nome).compareTo(transforma(a.nome));
+    if (c != 0)
+      return c;
+    return Integer.compare(this.id, a.id);
+  }
+
+  public int compareToKey(ParNomeId a) {
+    return transforma(this.nome).compareTo(transforma(a.nome));
+  }
+
+  // Nas operações de leitura, permite a busca pelo início do nome.
+  // A comparação considera apenas o tamanho da menor string.
+  public int compareToKeyRead(ParNomeId a) {
     String str1 = transforma(this.nome);
     String str2 = transforma(a.nome);
-
-    // reduz o tamanho da segunda string (somente para as buscas)
-    if(str2.length() > str1.length())
-      if(this.id == -1)
-        str2 = str2.substring(0, str1.length());
-        
-    // compara as strings
-    if(str1.compareTo(str2)==0)
-      if(this.id == -1)
-        return 0;
-      else
-        return this.id - a.id;
-    else
-      return str1.compareTo(str2);
+    int tamanho = Math.min(str1.length(), str2.length());
+    return str1.substring(0, tamanho).compareTo(str2.substring(0, tamanho));
   }
 
   public String toString() {
